@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>The ‘gfilmm’ package</title>
+
+<script>// Hide empty <a> tag within highlighted CodeBlock for screen reader accessibility (see https://github.com/jgm/pandoc/issues/6352#issuecomment-626106786) -->
+// v0.0.1
+// Written by JooYoung Seo (jooyoung@psu.edu) and Atsushi Yasumoto on June 1st, 2020.
+
+document.addEventListener('DOMContentLoaded', function() {
+  const codeList = document.getElementsByClassName("sourceCode");
+  for (var i = 0; i < codeList.length; i++) {
+    var linkList = codeList[i].getElementsByTagName('a');
+    for (var j = 0; j < linkList.length; j++) {
+      if (linkList[j].innerHTML === "") {
+        linkList[j].setAttribute('aria-hidden', 'true');
+      }
+    }
+  }
+});
+</script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+      code.sourceCode > span { display: inline-block; line-height: 1.25; }
+  code.sourceCode > span { color: inherit; text-decoration: inherit; }
+  code.sourceCode > span:empty { height: 1.2em; }
+  .sourceCode { overflow: visible; }
+  code.sourceCode { white-space: pre; position: relative; }
+  div.sourceCode { margin: 1em 0; }
+  pre.sourceCode { margin: 0; }
+  @media screen {
+  div.sourceCode { overflow: auto; }
+  }
+  @media print {
+  code.sourceCode { white-space: pre-wrap; }
+  code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+  }
+  pre.numberSource code
+    { counter-reset: source-line 0; }
+  pre.numberSource code > span
+    { position: relative; left: -4em; counter-increment: source-line; }
+  pre.numberSource code > span > a:first-child::before
+    { content: counter(source-line);
+      position: relative; left: -1em; text-align: right; vertical-align: baseline;
+      border: none; display: inline-block;
+      -webkit-touch-callout: none; -webkit-user-select: none;
+      -khtml-user-select: none; -moz-user-select: none;
+      -ms-user-select: none; user-select: none;
+      padding: 0 4px; width: 4em;
+      color: #aaaaaa;
+    }
+  pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+  div.sourceCode
+    {   }
+  @media screen {
+  code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+  }
+  code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+  code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+  code span.at { color: #7d9029; } /* Attribute */
+  code span.bn { color: #40a070; } /* BaseN */
+  code span.bu { } /* BuiltIn */
+  code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+  code span.ch { color: #4070a0; } /* Char */
+  code span.cn { color: #880000; } /* Constant */
+  code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+  code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+  code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+  code span.dt { color: #902000; } /* DataType */
+  code span.dv { color: #40a070; } /* DecVal */
+  code span.er { color: #ff0000; font-weight: bold; } /* Error */
+  code span.ex { } /* Extension */
+  code span.fl { color: #40a070; } /* Float */
+  code span.fu { color: #06287e; } /* Function */
+  code span.im { } /* Import */
+  code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+  code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+  code span.op { color: #666666; } /* Operator */
+  code span.ot { color: #007020; } /* Other */
+  code span.pp { color: #bc7a00; } /* Preprocessor */
+  code span.sc { color: #4070a0; } /* SpecialChar */
+  code span.ss { color: #bb6688; } /* SpecialString */
+  code span.st { color: #4070a0; } /* String */
+  code span.va { color: #19177c; } /* Variable */
+  code span.vs { color: #4070a0; } /* VerbatimString */
+  code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+    </style>
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css" data-origin="pandoc">
+code.sourceCode > span { display: inline-block; line-height: 1.25; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+<style type="text/css">body {
+font-family: "Trebuchet MS", Helvetica, sans-serif;
+}
+p {
+text-align: justify;
+}
+p code {
+color: #e83e8c;
+font-family: "Lucida Console", Monaco, monospace;
+font-weight: bold;
+}
+code span.co {
+color: darkmagenta;
+}
+div.sourceCode {
+background-color: seashell;
+margin-left: 1em;
+}
+@media print {
+div.sourceCode {
+background-color: seashell;
+}
+}
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">The ‘gfilmm’ package</h1>
+
+
+
+<div id="what-does-it-do" class="section level2">
+<h2>What does it do?</h2>
+<p>The ‘gfilmm’ package allows to generate simulations from the generalized fiducial distribution of the parameters of a Gaussian linear mixed model with categorical random effects (numeric random effects are not supported) and interval data. It also provides some helper functions to get summary statistics and confidence intervals.</p>
+<p>The algorithm implemented in ‘gfilmm’ is the one described in the paper <em>Generalized fiducial inference for normal linear mixed models</em> written by Jessi Cisewski and Jan Hannig. It is coded in C++ and the code is based on the original Matlab code written by Jessi Cisewski.</p>
+<p>Fiducial inference has something similar to Bayesian inference: the uncertainty about the parameters are represented by a distribution, the fiducial distribution, with the help of which we conduct inference on the parameters in a way similar to the Bayesian way, based on the posterior distribution of the parameters. The main difference is that there is no prior distribution (so fiducial inference is similar to <em>objective</em> Bayesian inference). The fiducial inference yields results close to the ones of the frequentist inference.</p>
+</div>
+<div id="first-example-a-non-mixed-linear-model" class="section level2">
+<h2>First example: a non-mixed linear model</h2>
+<p>The data must be given as a dataframe. Here we simulate data from a simple linear regression model:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">set.seed</span>(666L)</span>
+<span id="cb1-2"><a href="#cb1-2"></a>n &lt;-<span class="st"> </span>30L</span>
+<span id="cb1-3"><a href="#cb1-3"></a>x &lt;-<span class="st"> </span>1L<span class="op">:</span>n</span>
+<span id="cb1-4"><a href="#cb1-4"></a>y &lt;-<span class="st"> </span><span class="kw">rnorm</span>(n, <span class="dt">mean =</span> x, <span class="dt">sd =</span> <span class="dv">2</span>)</span>
+<span id="cb1-5"><a href="#cb1-5"></a>y_rounded &lt;-<span class="st"> </span><span class="kw">round</span>(y, <span class="dt">digits =</span> 1L)</span>
+<span id="cb1-6"><a href="#cb1-6"></a>dat &lt;-<span class="st"> </span><span class="kw">data.frame</span>(</span>
+<span id="cb1-7"><a href="#cb1-7"></a>  <span class="dt">ylwr =</span> y_rounded <span class="op">-</span><span class="st"> </span><span class="fl">0.05</span>,</span>
+<span id="cb1-8"><a href="#cb1-8"></a>  <span class="dt">yupr =</span> y_rounded <span class="op">+</span><span class="st"> </span><span class="fl">0.05</span>,</span>
+<span id="cb1-9"><a href="#cb1-9"></a>  <span class="dt">x =</span> x</span>
+<span id="cb1-10"><a href="#cb1-10"></a>)</span></code></pre></div>
+<p>Now we run the fiducial sampler:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">library</span>(gfilmm)</span>
+<span id="cb2-2"><a href="#cb2-2"></a>fidSims &lt;-<span class="st"> </span><span class="kw">gfilmm</span>(</span>
+<span id="cb2-3"><a href="#cb2-3"></a>  <span class="dt">y =</span> <span class="op">~</span><span class="st"> </span><span class="kw">cbind</span>(ylwr, yupr), <span class="co"># interval data</span></span>
+<span id="cb2-4"><a href="#cb2-4"></a>  <span class="dt">fixed =</span> <span class="op">~</span><span class="st"> </span>x,             <span class="co"># fixed effects</span></span>
+<span id="cb2-5"><a href="#cb2-5"></a>  <span class="dt">random =</span> <span class="ot">NULL</span>,           <span class="co"># random effects</span></span>
+<span id="cb2-6"><a href="#cb2-6"></a>  <span class="dt">data =</span> dat,              <span class="co"># data</span></span>
+<span id="cb2-7"><a href="#cb2-7"></a>  <span class="dt">N =</span> 10000L               <span class="co"># number of simulations</span></span>
+<span id="cb2-8"><a href="#cb2-8"></a>)</span></code></pre></div>
+<p>A summary of the fiducial simulations (the <code>Pr(=0)</code> column will be explained latter):</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">gfiSummary</span>(fidSims)</span>
+<span id="cb3-2"><a href="#cb3-2"></a><span class="co">#&gt;                  mean    median        lwr      upr Pr(=0)</span></span>
+<span id="cb3-3"><a href="#cb3-3"></a><span class="co">#&gt; (Intercept) 0.8696454 0.8742805 -0.9653809 2.720132     NA</span></span>
+<span id="cb3-4"><a href="#cb3-4"></a><span class="co">#&gt; x           0.9109923 0.9107001  0.8080415 1.015237     NA</span></span>
+<span id="cb3-5"><a href="#cb3-5"></a><span class="co">#&gt; sigma_error 2.4486778 2.4154403  1.8862475 3.211994      0</span></span>
+<span id="cb3-6"><a href="#cb3-6"></a><span class="co">#&gt; attr(,&quot;confidence level&quot;)</span></span>
+<span id="cb3-7"><a href="#cb3-7"></a><span class="co">#&gt; [1] 0.95</span></span></code></pre></div>
+<p>The fiducial confidence intervals are close to the frequentist ones:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a>lmfit &lt;-<span class="st"> </span><span class="kw">lm</span>(y <span class="op">~</span><span class="st"> </span>x)</span>
+<span id="cb4-2"><a href="#cb4-2"></a><span class="kw">confint</span>(lmfit)</span>
+<span id="cb4-3"><a href="#cb4-3"></a><span class="co">#&gt;                  2.5 %  97.5 %</span></span>
+<span id="cb4-4"><a href="#cb4-4"></a><span class="co">#&gt; (Intercept) -0.9589356 2.70406</span></span>
+<span id="cb4-5"><a href="#cb4-5"></a><span class="co">#&gt; x            0.8076886 1.01402</span></span></code></pre></div>
+<p>The fiducial cumulative distribution function of the slope:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a>Fslope &lt;-<span class="st"> </span><span class="kw">gfiCDF</span>(<span class="op">~</span><span class="st"> </span>x, fidSims)</span>
+<span id="cb5-2"><a href="#cb5-2"></a><span class="kw">plot</span>(Fslope, <span class="dt">main =</span> <span class="st">&quot;Slope&quot;</span>, <span class="dt">ylab =</span> <span class="kw">expression</span>(<span class="st">&quot;Pr(&quot;</span><span class="op">&lt;=</span><span class="st">&quot;x)&quot;</span>))</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>To get a fiducial density, I recommend the ‘kde1d’ package:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">library</span>(kde1d)</span>
+<span id="cb6-2"><a href="#cb6-2"></a>kfit &lt;-<span class="st"> </span><span class="kw">kde1d</span>(fidSims<span class="op">$</span>VERTEX[[<span class="st">&quot;x&quot;</span>]], <span class="dt">weights =</span> fidSims<span class="op">$</span>WEIGHT, <span class="dt">mult =</span> <span class="dv">4</span>)</span>
+<span id="cb6-3"><a href="#cb6-3"></a><span class="kw">curve</span>(<span class="kw">dkde1d</span>(x, kfit), <span class="dt">from =</span> <span class="fl">0.7</span>, <span class="dt">to =</span> <span class="fl">1.1</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p><strong><em>Fiducial predictive inference</em></strong>. The <code>gfilmmPredictive</code> function samples the generalized fiducial predictive distribution. All the functions seen above can be applied to the output.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a>fpd &lt;-<span class="st"> </span><span class="kw">gfilmmPredictive</span>(fidSims, <span class="dt">newdata =</span> <span class="kw">data.frame</span>(<span class="dt">x =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">30</span>)))</span>
+<span id="cb7-2"><a href="#cb7-2"></a><span class="kw">gfiSummary</span>(fpd)</span>
+<span id="cb7-3"><a href="#cb7-3"></a><span class="co">#&gt;         mean    median      lwr       upr</span></span>
+<span id="cb7-4"><a href="#cb7-4"></a><span class="co">#&gt; y1  1.801507  1.816828 -3.21099  6.922675</span></span>
+<span id="cb7-5"><a href="#cb7-5"></a><span class="co">#&gt; y2 28.155631 28.157729 22.85169 33.325925</span></span>
+<span id="cb7-6"><a href="#cb7-6"></a><span class="co">#&gt; attr(,&quot;confidence level&quot;)</span></span>
+<span id="cb7-7"><a href="#cb7-7"></a><span class="co">#&gt; [1] 0.95</span></span></code></pre></div>
+<p>Compare with the frequentist approach:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a><span class="kw">predict</span>(lmfit, <span class="dt">newdata =</span> <span class="kw">data.frame</span>(<span class="dt">x =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">30</span>)), <span class="dt">interval =</span> <span class="st">&quot;prediction&quot;</span>)</span>
+<span id="cb8-2"><a href="#cb8-2"></a><span class="co">#&gt;         fit       lwr       upr</span></span>
+<span id="cb8-3"><a href="#cb8-3"></a><span class="co">#&gt; 1  1.783417 -3.408471  6.975305</span></span>
+<span id="cb8-4"><a href="#cb8-4"></a><span class="co">#&gt; 2 28.198198 23.006310 33.390086</span></span></code></pre></div>
+</div>
+<div id="a-mixed-model" class="section level2">
+<h2>A mixed model</h2>
+<p>Now let us simulate some data from a one-way ANOVA model with a random factor:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a>mu           &lt;-<span class="st"> </span><span class="dv">10000</span> <span class="co"># grand mean</span></span>
+<span id="cb9-2"><a href="#cb9-2"></a>sigmaBetween &lt;-<span class="st"> </span><span class="dv">2</span></span>
+<span id="cb9-3"><a href="#cb9-3"></a>sigmaWithin  &lt;-<span class="st"> </span><span class="dv">3</span></span>
+<span id="cb9-4"><a href="#cb9-4"></a>n            &lt;-<span class="st"> </span>8L <span class="co"># sample size per group</span></span>
+<span id="cb9-5"><a href="#cb9-5"></a></span>
+<span id="cb9-6"><a href="#cb9-6"></a><span class="kw">set.seed</span>(666L)</span>
+<span id="cb9-7"><a href="#cb9-7"></a>groupmeans &lt;-<span class="st"> </span><span class="kw">rnorm</span>(2L, mu, sigmaBetween)</span>
+<span id="cb9-8"><a href="#cb9-8"></a>y1         &lt;-<span class="st"> </span><span class="kw">rnorm</span>(n, groupmeans[1L], sigmaWithin) </span>
+<span id="cb9-9"><a href="#cb9-9"></a>y2         &lt;-<span class="st"> </span><span class="kw">rnorm</span>(n, groupmeans[2L], sigmaWithin) </span>
+<span id="cb9-10"><a href="#cb9-10"></a>y          &lt;-<span class="st"> </span><span class="kw">c</span>(y1, y2)</span>
+<span id="cb9-11"><a href="#cb9-11"></a>y_rounded  &lt;-<span class="st"> </span><span class="kw">round</span>(<span class="kw">c</span>(y1, y2), <span class="dt">digits =</span> 1L)</span>
+<span id="cb9-12"><a href="#cb9-12"></a>dat        &lt;-<span class="st"> </span><span class="kw">data.frame</span>(</span>
+<span id="cb9-13"><a href="#cb9-13"></a>                <span class="dt">ylwr =</span> y_rounded <span class="op">-</span><span class="st"> </span><span class="fl">0.05</span>,</span>
+<span id="cb9-14"><a href="#cb9-14"></a>                <span class="dt">yupr =</span> y_rounded <span class="op">+</span><span class="st"> </span><span class="fl">0.05</span>,</span>
+<span id="cb9-15"><a href="#cb9-15"></a>                <span class="dt">group =</span> <span class="kw">gl</span>(2L, n)</span>
+<span id="cb9-16"><a href="#cb9-16"></a>              )</span></code></pre></div>
+<p>We run the fiducial sampler:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1"></a>fidSims &lt;-<span class="st"> </span><span class="kw">gfilmm</span>(<span class="op">~</span><span class="st"> </span><span class="kw">cbind</span>(ylwr, yupr), <span class="op">~</span><span class="st"> </span><span class="dv">1</span>, <span class="op">~</span><span class="st"> </span>group, <span class="dt">data =</span> dat, <span class="dt">N =</span> 10000L)</span></code></pre></div>
+<p>Observe that the between standard deviation <code>sigma_group</code> has a positive value in the <code>Pr(=0)</code> column:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1"></a><span class="kw">gfiSummary</span>(fidSims)</span>
+<span id="cb11-2"><a href="#cb11-2"></a><span class="co">#&gt;                     mean       median        lwr          upr     Pr(=0)</span></span>
+<span id="cb11-3"><a href="#cb11-3"></a><span class="co">#&gt; (Intercept) 10000.698525 10001.828832 9979.48611 10026.836248         NA</span></span>
+<span id="cb11-4"><a href="#cb11-4"></a><span class="co">#&gt; sigma_group    18.264835     3.399129    0.00000    83.980735 0.08605762</span></span>
+<span id="cb11-5"><a href="#cb11-5"></a><span class="co">#&gt; sigma_error     4.132655     4.008439    2.78631     6.267243 0.00000000</span></span>
+<span id="cb11-6"><a href="#cb11-6"></a><span class="co">#&gt; attr(,&quot;confidence level&quot;)</span></span>
+<span id="cb11-7"><a href="#cb11-7"></a><span class="co">#&gt; [1] 0.95</span></span></code></pre></div>
+<p>What does it mean? The fiducial distributions of the variance components have a mass at zero, and this value is the probability that the between standard deviation equals zero. So you have to be careful if you are interested in the fiducial density of a standard deviation: if <code>Pr(=0)</code> is not null for the standard deviation you are interested in, the fiducial distribution of this standard deviation <em>does not have a density</em>. It has a mass at zero, and a density on the strictly positive real numbers.</p>
+<p>Compare the fiducial confidence interval of the grand mean to its Kenward-Roger confidence interval:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1"></a><span class="kw">library</span>(lmerTest)</span>
+<span id="cb12-2"><a href="#cb12-2"></a><span class="kw">library</span>(emmeans)</span>
+<span id="cb12-3"><a href="#cb12-3"></a>fit &lt;-<span class="st"> </span><span class="kw">lmer</span>(y <span class="op">~</span><span class="st"> </span>(<span class="dv">1</span><span class="op">|</span>group), <span class="dt">data =</span> dat)</span>
+<span id="cb12-4"><a href="#cb12-4"></a><span class="kw">emmeans</span>(fit, <span class="op">~</span><span class="st"> </span><span class="dv">1</span>)</span>
+<span id="cb12-5"><a href="#cb12-5"></a><span class="co">#&gt;  1       emmean     SE df lower.CL upper.CL</span></span>
+<span id="cb12-6"><a href="#cb12-6"></a><span class="co">#&gt;  overall  10002 2.1074  1   9975.4    10029</span></span>
+<span id="cb12-7"><a href="#cb12-7"></a><span class="co">#&gt; </span></span>
+<span id="cb12-8"><a href="#cb12-8"></a><span class="co">#&gt; Degrees-of-freedom method: kenward-roger </span></span>
+<span id="cb12-9"><a href="#cb12-9"></a><span class="co">#&gt; Confidence level used: 0.95</span></span></code></pre></div>
+<p>With <code>gfiConfInt</code> we can get a fiducial confidence interval for <em>any</em> parameter of interest, for example the coefficient of total variation:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1"></a><span class="kw">gfiConfInt</span>(<span class="op">~</span><span class="st"> </span><span class="kw">sqrt</span>(sigma_group<span class="op">^</span><span class="dv">2</span> <span class="op">+</span><span class="st"> </span>sigma_error<span class="op">^</span><span class="dv">2</span>)<span class="op">/</span><span class="st">`</span><span class="dt">(Intercept)</span><span class="st">`</span>, fidSims)</span>
+<span id="cb13-2"><a href="#cb13-2"></a><span class="co">#&gt;         2.5%        97.5% </span></span>
+<span id="cb13-3"><a href="#cb13-3"></a><span class="co">#&gt; 0.0003318767 0.0084440371</span></span></code></pre></div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
