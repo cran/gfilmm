@@ -9,14 +9,19 @@
 #' @param data the data, a dataframe
 #' @param N desired number of simulations
 #' @param thresh threshold, default \code{N/2}; for experts only
+#' @param precision one of \code{"double"}, \code{"long"}, or 
+#'   \code{"quadruple"}, the precision used in the algorithm
+#' @param seed the seed for the C++ random numbers generator, a positive 
+#'   integer, or \code{NULL} to use a random seed 
 #' @param x a \code{gfilmm} object
 #' @param ... ignored
 #'
 #' @return A list with two components: a dataframe \code{VERTEX}, and a vector 
 #'   \code{WEIGHT}. It has class \code{gfilmm}.
 #' 
-#' @importFrom stats model.matrix
+#' @importFrom stats model.matrix terms.formula as.formula
 #' @importFrom utils head
+#' @importFrom rgr gx.sort.df
 #' @export
 #' 
 #' @references J. Cisewski and J.Hannig. 
@@ -34,8 +39,21 @@
 #' library(kde1d)
 #' kfit <- kde1d(gfi$VERTEX[["(Intercept)"]], weights = gfi$WEIGHT)
 #' curve(dkde1d(x, kfit), from = 45, to = 65)
-gfilmm <- function(y, fixed, random, data, N, thresh=N/2){
+gfilmm <- function(
+  y, fixed, random, data, N, thresh = N/2, precision = "double", seed = NULL
+){
+  precision <- match.arg(precision, c("double", "long", "quadruple"))
+  seed <- if(is.null(seed)){
+    sample.int(.Machine$integer.max, 1L)
+  }else{
+    as.integer(abs(seed))
+  }
   data <- droplevels(data)
+  if(!is.null(random)){
+    factors <- rownames(attr(terms.formula(random), "factors"))
+    frmla <- as.formula(paste0("~ ", paste0(factors, collapse = " + ")))
+    data <- gx.sort.df(frmla, data)
+  }
   Y <- f_eval_rhs(y, data = data)
   if(!is.matrix(Y) || ncol(Y) != 2L){
     stop(
@@ -67,15 +85,21 @@ gfilmm <- function(y, fixed, random, data, N, thresh=N/2){
   tlabs <- head(names(RE2), -1L)
   Z <- getZ(RE2) 
   E <- vapply(RE2, nlevels, integer(1L))
-  RE2 <- vapply(RE2, as.integer, integer(n)) - 1L
-  gfi <- gfilmm_(yl, yu, FE, Z, RE2, E, N, thresh)
+  RE2 <- vapply(RE2, recode, integer(n))#vapply(RE2, as.integer, integer(n)) - 1L # recode
+  gfi <- switch(
+    precision,
+    long = gfilmm_long(yl, yu, FE, Z, RE2, E, N, thresh, seed),
+    double = gfilmm_double(yl, yu, FE, Z, RE2, E, N, thresh, seed),
+    quadruple = gfilmm_128(yl, yu, FE, Z, RE2, E, N, thresh, seed)
+  )
   rownames(gfi[["VERTEX"]]) <-
     c(colnames(FE), paste0("sigma_", c(tlabs, "error")))
   gfi[["VERTEX"]] <- as.data.frame(t(gfi[["VERTEX"]]))
   attr(gfi, "effects") <- c(fixed = ncol(FE), random = ncol(RE2))
-  attr(gfi, "covariates") <- getCovariates(data, fixed, random)
+  attr(gfi, "covariates") <- getCovariates(data, fixed)
   attr(gfi, "fixed") <- fixed
   attr(gfi, "random") <- random
+  attr(gfi, "precision") <- precision
   class(gfi) <- "gfilmm"
   gfi
 }
@@ -86,9 +110,10 @@ gfilmm <- function(y, fixed, random, data, N, thresh=N/2){
 #' @export
 print.gfilmm <- function(x, ...){
   nms <- names(x)
+  precision <- attr(x, "precision")
   attributes(x) <- NULL
   cat(
-    "`gfilmm` object", "\n",
+    sprintf("`gfilmm` object (%s precision)", precision), "\n",
     "---------------", "\n",
     sep = ""
   )

@@ -5,7 +5,16 @@
 \alias{print.gfilmm}
 \title{Generalized fiducial inference}
 \usage{
-gfilmm(y, fixed, random, data, N, thresh = N/2)
+gfilmm(
+  y,
+  fixed,
+  random,
+  data,
+  N,
+  thresh = N/2,
+  precision = "double",
+  seed = NULL
+)
 
 \method{print}{gfilmm}(x, ...)
 }
@@ -23,6 +32,12 @@ for no random effect}
 \item{N}{desired number of simulations}
 
 \item{thresh}{threshold, default \code{N/2}; for experts only}
+
+\item{precision}{one of \code{"double"}, \code{"long"}, or 
+\code{"quadruple"}, the precision used in the algorithm}
+
+\item{seed}{the seed for the C++ random numbers generator, a positive 
+integer, or \code{NULL} to use a random seed}
 
 \item{x}{a \code{gfilmm} object}
 

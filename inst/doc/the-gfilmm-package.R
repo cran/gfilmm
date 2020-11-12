@@ -26,7 +26,7 @@ fidSims <- gfilmm(
   fixed = ~ x,             # fixed effects
   random = NULL,           # random effects
   data = dat,              # data
-  N = 10000L               # number of simulations
+  N = 20000L               # number of simulations
 )
 
 ## ----gfiSummary_linreg--------------------------------------------------------
@@ -43,35 +43,64 @@ plot(Fslope, main = "Slope", ylab = expression("Pr("<="x)"))
 ## ----gfiDensity_linreg--------------------------------------------------------
 library(kde1d)
 kfit <- kde1d(fidSims$VERTEX[["x"]], weights = fidSims$WEIGHT, mult = 4)
-curve(dkde1d(x, kfit), from = 0.7, to = 1.1)
+curve(dkde1d(x, kfit), from = 0.7, to = 1.1, col = "red", lwd = 2)
+# observe the resemblance with the distribution of the 
+# frequentist estimate of the slope:
+curve(
+  dnorm(x, coef(lmfit)["x"], sqrt(vcov(lmfit)["x","x"])), add = TRUE, 
+  col = "blue", lwd = 2, lty = "dashed"
+)
 
-## -----------------------------------------------------------------------------
+## ----scatterplot--------------------------------------------------------------
+indcs <- sample.int(20000L, replace = TRUE, prob = fidSims$WEIGHT)
+pseudoSims <- fidSims$VERTEX[indcs,]
+library(GGally)
+ggpairs(
+  pseudoSims,
+  upper = list(continuous = ggally_density),
+  lower = list(continuous = wrap("points", alpha = 0.1))
+)
+
+## ----ellipse------------------------------------------------------------------
+library(car)
+dataEllipse(
+  pseudoSims[["(Intercept)"]], pseudoSims[["x"]], 
+  levels = c(0.5,0.95), col = c("black", "red"),
+  xlab = "Intercept", ylab = "Slope"
+)
+confidenceEllipse(
+  lmfit, 1:2, levels = c(0.5,0.95), add = TRUE, 
+  col = "blue", lty = "dashed"
+)
+
+## ----gfilmmPredictive---------------------------------------------------------
 fpd <- gfilmmPredictive(fidSims, newdata = data.frame(x = c(1, 30)))
 gfiSummary(fpd)
 
-## -----------------------------------------------------------------------------
+## ----lmpredict----------------------------------------------------------------
 predict(lmfit, newdata = data.frame(x = c(1, 30)), interval = "prediction")
 
 ## ----simulations_AOV1R--------------------------------------------------------
 mu           <- 10000 # grand mean
 sigmaBetween <- 2
 sigmaWithin  <- 3
-n            <- 8L # sample size per group
+I            <- 6L # number of groups
+J            <- 5L # sample size per group
 
-set.seed(666L)
-groupmeans <- rnorm(2L, mu, sigmaBetween)
-y1         <- rnorm(n, groupmeans[1L], sigmaWithin) 
-y2         <- rnorm(n, groupmeans[2L], sigmaWithin) 
-y          <- c(y1, y2)
-y_rounded  <- round(c(y1, y2), digits = 1L)
+set.seed(31415926L)
+groupmeans <- rnorm(I, mu, sigmaBetween)
+y          <- c(
+  vapply(groupmeans, function(gmean) rnorm(J, gmean, sigmaWithin), numeric(J))
+)
+y_rounded  <- round(y, digits = 1L)
 dat        <- data.frame(
                 ylwr = y_rounded - 0.05,
                 yupr = y_rounded + 0.05,
-                group = gl(2L, n)
+                group = gl(J, I)
               )
 
 ## ----gfilmm_AOV1R-------------------------------------------------------------
-fidSims <- gfilmm(~ cbind(ylwr, yupr), ~ 1, ~ group, data = dat, N = 10000L)
+fidSims <- gfilmm(~ cbind(ylwr, yupr), ~ 1, ~ group, data = dat, N = 20000L)
 
 ## ----gfiSummary_AOV1R---------------------------------------------------------
 gfiSummary(fidSims)
@@ -82,6 +111,23 @@ library(emmeans)
 fit <- lmer(y ~ (1|group), data = dat)
 emmeans(fit, ~ 1)
 
+## ----AOV1R--------------------------------------------------------------------
+library(AOV1R)
+aovfit <- aov1r(y ~ dat$group)
+confint(aovfit)
+
 ## ----gfiConfInt_CV_AOV1R------------------------------------------------------
 gfiConfInt(~ sqrt(sigma_group^2 + sigma_error^2)/`(Intercept)`, fidSims)
+
+## ----parallel-----------------------------------------------------------------
+library(doParallel)
+cl <- makePSOCKcluster(2L)
+registerDoParallel(cl)
+
+gfs <- foreach(i = c(3L, 4L), .combine = list, .export = "gfilmm") %dopar% 
+  gfilmm(~ cbind(ylwr, yupr), ~ 1, ~ group, data = dat, N = i * 10000L)
+
+stopCluster(cl)
+
+lapply(gfs, gfiSummary)
 
