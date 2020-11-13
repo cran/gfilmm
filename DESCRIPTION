@@ -1,7 +1,7 @@
 Package: gfilmm
 Type: Package
 Title: Generalized Fiducial Inference for Normal Linear Mixed Models
-Version: 1.0.0
+Version: 1.0.1
 Authors@R: c(
     person("Stéphane", "Laurent", role = c("aut", "cre"),
            email = "laurent_step@outlook.fr"),
@@ -19,16 +19,16 @@ Imports: Rcpp (>= 1.0.0), lazyeval, stats, spatstat, utils, forcats,
         rgr
 Suggests: kde1d, knitr, rmarkdown, lmerTest, emmeans, testthat, AOV1R,
         GGally, car, doParallel
-LinkingTo: Rcpp, RcppEigen, BH
+LinkingTo: Rcpp, RcppEigen
 RoxygenNote: 7.1.1
 Encoding: UTF-8
 LazyData: true
 VignetteBuilder: knitr
 NeedsCompilation: yes
-Packaged: 2020-11-12 12:17:18 UTC; stla
+Packaged: 2020-11-13 08:28:57 UTC; stla
 Author: Stéphane Laurent [aut, cre],
   Jessi Cisewski [aut, ctb] (author of the original Matlab code,
     <https://orcid.org/0000-0002-9656-2272>)
 Maintainer: Stéphane Laurent <laurent_step@outlook.fr>
 Repository: CRAN
-Date/Publication: 2020-11-12 12:40:02 UTC
+Date/Publication: 2020-11-13 10:20:02 UTC

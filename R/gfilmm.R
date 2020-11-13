@@ -9,8 +9,8 @@
 #' @param data the data, a dataframe
 #' @param N desired number of simulations
 #' @param thresh threshold, default \code{N/2}; for experts only
-#' @param precision one of \code{"double"}, \code{"long"}, or 
-#'   \code{"quadruple"}, the precision used in the algorithm
+#' @param long logical, whether to use long doubles instead of doubles in the 
+#'   algorithm
 #' @param seed the seed for the C++ random numbers generator, a positive 
 #'   integer, or \code{NULL} to use a random seed 
 #' @param x a \code{gfilmm} object
@@ -40,9 +40,8 @@
 #' kfit <- kde1d(gfi$VERTEX[["(Intercept)"]], weights = gfi$WEIGHT)
 #' curve(dkde1d(x, kfit), from = 45, to = 65)
 gfilmm <- function(
-  y, fixed, random, data, N, thresh = N/2, precision = "double", seed = NULL
+  y, fixed, random, data, N, thresh=N/2, long=FALSE, seed = NULL
 ){
-  precision <- match.arg(precision, c("double", "long", "quadruple"))
   seed <- if(is.null(seed)){
     sample.int(.Machine$integer.max, 1L)
   }else{
@@ -86,12 +85,11 @@ gfilmm <- function(
   Z <- getZ(RE2) 
   E <- vapply(RE2, nlevels, integer(1L))
   RE2 <- vapply(RE2, recode, integer(n))#vapply(RE2, as.integer, integer(n)) - 1L # recode
-  gfi <- switch(
-    precision,
-    long = gfilmm_long(yl, yu, FE, Z, RE2, E, N, thresh, seed),
-    double = gfilmm_double(yl, yu, FE, Z, RE2, E, N, thresh, seed),
-    quadruple = gfilmm_128(yl, yu, FE, Z, RE2, E, N, thresh, seed)
-  )
+  gfi <- if(long){
+    gfilmm_long(yl, yu, FE, Z, RE2, E, N, thresh, seed)
+  }else{
+    gfilmm_double(yl, yu, FE, Z, RE2, E, N, thresh, seed)
+  }
   rownames(gfi[["VERTEX"]]) <-
     c(colnames(FE), paste0("sigma_", c(tlabs, "error")))
   gfi[["VERTEX"]] <- as.data.frame(t(gfi[["VERTEX"]]))
@@ -99,7 +97,6 @@ gfilmm <- function(
   attr(gfi, "covariates") <- getCovariates(data, fixed)
   attr(gfi, "fixed") <- fixed
   attr(gfi, "random") <- random
-  attr(gfi, "precision") <- precision
   class(gfi) <- "gfilmm"
   gfi
 }
@@ -110,10 +107,9 @@ gfilmm <- function(
 #' @export
 print.gfilmm <- function(x, ...){
   nms <- names(x)
-  precision <- attr(x, "precision")
   attributes(x) <- NULL
   cat(
-    sprintf("`gfilmm` object (%s precision)", precision), "\n",
+    "`gfilmm` object", "\n",
     "---------------", "\n",
     sep = ""
   )

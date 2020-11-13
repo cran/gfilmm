@@ -9,7 +9,3 @@ gfilmm_long <- function(L, U, FE, RE, RE2, E, N, thresh, seed) {
     .Call('_gfilmm_gfilmm_long', PACKAGE = 'gfilmm', L, U, FE, RE, RE2, E, N, thresh, seed)
 }
 
-gfilmm_128 <- function(L, U, FE, RE, RE2, E, N, thresh, seed) {
-    .Call('_gfilmm_gfilmm_128', PACKAGE = 'gfilmm', L, U, FE, RE, RE2, E, N, thresh, seed)
-}
-

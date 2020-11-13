@@ -1,16 +1,14 @@
-// -*- mode: C++; c-indent-level: 2; c-basic-offset: 2; indent-tabs-mode: nil; -*-
+// -*- mode: C++; c-indent-level: 2; c-basic-offset: 2; indent-tabs-mode: nil;
+// -*-
 
 // we only include RcppEigen.h which pulls Rcpp.h in for us
 #include <RcppEigen.h>
-#include <boost/multiprecision/float128.hpp>
 #include <random>
-namespace mp = boost::multiprecision;
 
 // via the depends attribute we tell Rcpp to create hooks for
 // RcppEigen so that the build process will know what to do
 //
 // [[Rcpp::depends(RcppEigen)]]
-// [[Rcpp::depends(BH)]]
 
 template <typename Real>
 Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> tsolveAndMultiply(
@@ -59,7 +57,7 @@ template <typename Real>
 Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> gmatrix(
     const size_t nrows,
     const size_t ncols,
-    std::default_random_engine& generator) {
+    std::default_random_engine & generator) {
   Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> G(nrows, ncols);
   for(size_t i = 0; i < nrows; i++) {
     for(size_t j = 0; j < ncols; j++) {
@@ -98,7 +96,7 @@ const std::vector<Real> fidSample(
     const Eigen::Matrix<Real, Eigen::Dynamic, 1>& VTsum,
     const Real L,
     const Real U,
-    std::default_random_engine& generator) {
+    std::default_random_engine & generator) {
   Real ZZ, wt;                    // outputs
   const size_t p = VTsum.size();  // = VT2.size()
   std::vector<size_t> high, low, zero, zeronot;
@@ -286,7 +284,7 @@ const std::vector<Real> fidSample(
   return out;
 }
 
-const Eigen::VectorXi cppunique(Eigen::VectorXi& v) {
+const Eigen::VectorXi cppunique(Eigen::VectorXi & v) {
   int size = v.size();
   for(int i = 0; i < size; i++) {
     for(int j = i + 1; j < size;) {
@@ -340,7 +338,7 @@ const Eigen::MatrixXi vv2matrix(std::vector<std::vector<int>> U,
   return out;
 }
 
-const Eigen::VectorXi Vsort(Eigen::VectorXi& V) {
+const Eigen::VectorXi Vsort(Eigen::VectorXi & V) {
   std::sort(V.data(), V.data() + V.size());
   return V;
 }
@@ -366,14 +364,14 @@ std::vector<T> zero2n(T n) {
 }
 
 const std::vector<size_t> sample_int(const size_t n,
-                                     std::default_random_engine& generator) {
+                                     std::default_random_engine & generator) {
   std::vector<size_t> elems = zero2n(n);
   std::shuffle(elems.begin(), elems.end(), generator);
   return elems;
 }
 
 template <typename Real>
-const Real rchisq(int df, std::default_random_engine& generator) {
+const Real rchisq(int df, std::default_random_engine & generator) {
   Real out = 0;
   for(int i = 0; i < df; i++) {
     const Real toadd = (Real)(gaussian(generator));
@@ -384,7 +382,7 @@ const Real rchisq(int df, std::default_random_engine& generator) {
 
 const Eigen::MatrixXd umatrix(const size_t nrows,
                               const size_t ncols,
-                              std::default_random_engine& generator) {
+                              std::default_random_engine & generator) {
   Eigen::MatrixXd U(nrows, ncols);
   for(size_t i = 0; i < nrows; i++) {
     for(size_t j = 0; j < ncols; j++) {
@@ -395,13 +393,13 @@ const Eigen::MatrixXd umatrix(const size_t nrows,
 }
 
 template <typename Real>
-Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> pickCoordinates(
+Eigen::MatrixXd pickCoordinates(
     const size_t Dim,
     const size_t N,
     const size_t fe,
     const std::vector<Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>>& VT,
     const Eigen::MatrixXd& U) {
-  Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> VTend(Dim, N);
+  Eigen::MatrixXd VTend(Dim, N);
   for(size_t i = 0; i < N; i++) {
     const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> VTi = VT[i];
     for(size_t j = 0; j < Dim; j++) {
@@ -413,17 +411,17 @@ Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> pickCoordinates(
           if(x < 0) {
             x = 0;
           }
-          VTend(j, i) = x;
+          VTend(j, i) = (double)x;
         }
       } else {
         if(j < fe) {
-          VTend(j, i) = VTi.row(j).maxCoeff();
+          VTend(j, i) = (double)VTi.row(j).maxCoeff();
         } else {
           Real x = VTi.row(j).maxCoeff();
           if(x < 0) {
             x = 0;
           }
-          VTend(j, i) = x;
+          VTend(j, i) = (double)x;
         }
       }
     }
@@ -431,23 +429,22 @@ Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> pickCoordinates(
   return VTend;
 }
 
-template <typename Real>
-struct GFI {
-  Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> vertices;
-  Eigen::Matrix<Real, Eigen::Dynamic, 1> weights;
-  Eigen::Matrix<Real, Eigen::Dynamic, 1> ess;
-};
+typedef struct GFI {
+  Eigen::MatrixXd vertices;
+  Eigen::VectorXd weights;
+  Rcpp::NumericVector ess;
+} GFI;
 
 template <typename Real>
-GFI<Real> gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
-                  const Eigen::Matrix<Real, Eigen::Dynamic, 1>& U,
-                  const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>& FE,
-                  const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>& RE,
-                  const Eigen::MatrixXi& RE2,
-                  const Rcpp::IntegerVector E,
-                  const size_t N,
-                  const double thresh,
-                  const unsigned seed) {
+GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
+            const Eigen::Matrix<Real, Eigen::Dynamic, 1>& U,
+            const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>& FE,
+            const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>& RE,
+            const Eigen::MatrixXi& RE2,
+            const Rcpp::IntegerVector E,
+            const size_t N,
+            const double thresh,
+            const unsigned seed) {
   std::default_random_engine generator(seed);
   Eigen::Matrix<Real, Eigen::Dynamic, 1> WTnorm(N);  // output:weights
   const size_t n = L.size();
@@ -455,15 +452,14 @@ GFI<Real> gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
   const size_t re = RE2.cols();
   const size_t Dim = fe + re;
   const size_t Dimm1 = Dim - 1;
-  Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> VERTEX(Dim, N);  // output
+  Eigen::MatrixXd VERTEX(Dim, N);  // output
   const Rcpp::IntegerVector Esum = Rcpp::cumsum(E);
 
   //-------- SET-UP ALGORITHM OBJECTS ------------------------------------------
   std::vector<Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>> Z(re);
   Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> weight =
       Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>::Ones(n, N);
-  Eigen::Matrix<Real, Eigen::Dynamic, 1> ESS =
-      N * Eigen::Matrix<Real, Eigen::Dynamic, 1>::Ones(n);
+  Rcpp::NumericVector ESS(n, (double)N);
   std::vector<int> C;  // initial constraints
   std::vector<int> K;  // complement of C
   std::vector<Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>> VT(
@@ -505,8 +501,9 @@ GFI<Real> gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
   const Eigen::VectorXi K_start =
       Eigen::Map<Eigen::VectorXi, Eigen::Unaligned>(C.data(), Dim);
   Eigen::VectorXi JJ =
-      Eigen::Map<Eigen::VectorXi, Eigen::Unaligned>(C.data(), Dim);
-
+    Eigen::Map<Eigen::VectorXi, Eigen::Unaligned>(C.data(), Dim);
+  
+  
   for(size_t i = 0; i < n - Dim; i++) {
     for(size_t j = 0; j < N; j++) {
       Z[re - 1](K[i], j) = 0.0;
@@ -566,8 +563,8 @@ GFI<Real> gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
           if(E(i) > Z[i].rows()) {
             const int nrowsZi = Z[i].rows();
             Z[i].conservativeResize(E(i), Eigen::NoChange);
-            Z[i].bottomRows(E(i) - nrowsZi) =
-                gmatrix<Real>(E(i) - nrowsZi, N, generator);
+            Z[i].bottomRows(E(i) - nrowsZi) = 
+              gmatrix<Real>(E(i) - nrowsZi, N, generator);
           }
         }
       }
@@ -806,12 +803,12 @@ GFI<Real> gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
         throw Rcpp::exception("Something bad occured.");
       }
       WTnorm = WT / WTsum;
-      ESS(k) = 1 / (WTnorm.dot(WTnorm));
+      ESS(k) = (double)(1 / (WTnorm.dot(WTnorm)));
 
       JJ.conservativeResize(JJ.size() + 1);
       const int lenJJ = JJ.size();
       JJ(lenJJ - 1) = k;
-
+      
       if(ESS(k) < thresh && k < K[n - Dim - 1]) {
         std::vector<size_t> N_sons(N, 0);
         const std::vector<Real> dist = Vcumsum<Real>(N * WTnorm);
@@ -949,8 +946,8 @@ GFI<Real> gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
                         Z1 - O2a;
                     const Real b = sqrt(tau_.dot(tau_));
                     const Eigen::Matrix<Real, Eigen::Dynamic, 1> tau = tau_ / b;
-                    const Real bb =
-                        sqrt(rchisq<Real>(lenZ1 - rankO2, generator));
+                    const Real bb = 
+                      sqrt(rchisq<Real>(lenZ1 - rankO2, generator));
                     const Real bbb = b / bb;
                     Eigen::Matrix<Real, Eigen::Dynamic, 1> aa(rankO2);
                     for(int jj = 0; jj < rankO2; jj++) {
@@ -1173,10 +1170,15 @@ GFI<Real> gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
     }
   }
 
-  GFI<Real> out;
-  out.weights = WTnorm;
+  GFI out;
+  Eigen::VectorXd ow = Eigen::VectorXd::Zero(N);
+  out.weights = ow;
   out.vertices = VERTEX;
   out.ess = ESS;
+
+  for(auto j = 0; j < N; j++) {
+    out.weights(j) = (double)WTnorm.coeff(j);
+  }
 
   return out;
 }
@@ -1201,66 +1203,6 @@ Eigen::Matrix<long double, Eigen::Dynamic, 1> d2lVector(Eigen::VectorXd V) {
   return out;
 }
 
-Eigen::MatrixXd l2d(
-    Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> M) {
-  Eigen::MatrixXd out(M.rows(), M.cols());
-  for(auto i = 0; i < M.rows(); i++) {
-    for(auto j = 0; j < M.cols(); j++) {
-      out(i, j) = (double)M.coeff(i, j);
-    }
-  }
-  return out;
-}
-
-Eigen::VectorXd l2dVector(Eigen::Matrix<long double, Eigen::Dynamic, 1> V) {
-  Eigen::VectorXd out(V.rows());
-  for(auto i = 0; i < V.size(); i++) {
-    out(i) = (double)V.coeff(i);
-  }
-  return out;
-}
-
-Eigen::Matrix<mp::float128, Eigen::Dynamic, Eigen::Dynamic> d2mp(
-    Eigen::MatrixXd M) {
-  Eigen::Matrix<mp::float128, Eigen::Dynamic, Eigen::Dynamic> out(M.rows(),
-                                                                  M.cols());
-  for(auto i = 0; i < M.rows(); i++) {
-    for(auto j = 0; j < M.cols(); j++) {
-      const mp::float128 x(M.coeff(i, j));
-      out(i, j) = x;
-    }
-  }
-  return out;
-}
-
-Eigen::Matrix<mp::float128, Eigen::Dynamic, 1> d2mpVector(Eigen::VectorXd V) {
-  Eigen::Matrix<mp::float128, Eigen::Dynamic, 1> out(V.rows());
-  for(auto i = 0; i < V.size(); i++) {
-    const mp::float128 x(V.coeff(i));
-    out(i) = x;
-  }
-  return out;
-}
-
-Eigen::MatrixXd mp2d(
-    Eigen::Matrix<mp::float128, Eigen::Dynamic, Eigen::Dynamic> M) {
-  Eigen::MatrixXd out(M.rows(), M.cols());
-  for(auto i = 0; i < M.rows(); i++) {
-    for(auto j = 0; j < M.cols(); j++) {
-      out(i, j) = M.coeff(i, j).convert_to<double>();
-    }
-  }
-  return out;
-}
-
-Eigen::VectorXd mp2dVector(Eigen::Matrix<mp::float128, Eigen::Dynamic, 1> V) {
-  Eigen::VectorXd out(V.rows());
-  for(auto i = 0; i < V.size(); i++) {
-    out(i) = V.coeff(i).convert_to<double>();
-  }
-  return out;
-}
-
 // [[Rcpp::export]]
 Rcpp::List gfilmm_double(const Eigen::VectorXd& L,
                          const Eigen::VectorXd& U,
@@ -1269,10 +1211,9 @@ Rcpp::List gfilmm_double(const Eigen::VectorXd& L,
                          const Eigen::MatrixXi& RE2,
                          const Rcpp::IntegerVector E,
                          const size_t N,
-                         const double thresh,
+                         const double thresh, 
                          const unsigned seed) {
-  const GFI<double> gfi =
-      gfilmm_<double>(L, U, FE, RE, RE2, E, N, thresh, seed);
+  const GFI gfi = gfilmm_<double>(L, U, FE, RE, RE2, E, N, thresh, seed);
 
   Rcpp::List out = Rcpp::List::create(Rcpp::Named("VERTEX") = gfi.vertices,
                                       Rcpp::Named("WEIGHT") = gfi.weights);
@@ -1288,35 +1229,13 @@ Rcpp::List gfilmm_long(const Eigen::VectorXd& L,
                        const Eigen::MatrixXi& RE2,
                        const Rcpp::IntegerVector E,
                        const size_t N,
-                       const double thresh,
+                       const double thresh, 
                        const unsigned seed) {
-  const GFI<long double> gfi = gfilmm_<long double>(
-      d2lVector(L), d2lVector(U), d2l(FE), d2l(RE), RE2, E, N, thresh, seed);
+  const GFI gfi = gfilmm_<long double>(d2lVector(L), d2lVector(U), d2l(FE),
+                                       d2l(RE), RE2, E, N, thresh, seed);
 
-  Rcpp::List out =
-      Rcpp::List::create(Rcpp::Named("VERTEX") = l2d(gfi.vertices),
-                         Rcpp::Named("WEIGHT") = l2dVector(gfi.weights));
-  out.attr("ESS") = l2dVector(gfi.ess);
-  return out;
-}
-
-// [[Rcpp::export]]
-Rcpp::List gfilmm_128(const Eigen::VectorXd& L,
-                      const Eigen::VectorXd& U,
-                      const Eigen::MatrixXd& FE,
-                      const Eigen::MatrixXd& RE,
-                      const Eigen::MatrixXi& RE2,
-                      const Rcpp::IntegerVector E,
-                      const size_t N,
-                      const double thresh,
-                      const unsigned seed) {
-  const GFI<mp::float128> gfi =
-      gfilmm_<mp::float128>(d2mpVector(L), d2mpVector(U), d2mp(FE), d2mp(RE),
-                            RE2, E, N, thresh, seed);
-
-  Rcpp::List out =
-      Rcpp::List::create(Rcpp::Named("VERTEX") = mp2d(gfi.vertices),
-                         Rcpp::Named("WEIGHT") = mp2dVector(gfi.weights));
-  out.attr("ESS") = mp2dVector(gfi.ess);
+  Rcpp::List out = Rcpp::List::create(Rcpp::Named("VERTEX") = gfi.vertices,
+                                      Rcpp::Named("WEIGHT") = gfi.weights);
+  out.attr("ESS") = gfi.ess;
   return out;
 }
