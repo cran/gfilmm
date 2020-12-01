@@ -26,7 +26,8 @@ fidSims <- gfilmm(
   fixed = ~ x,             # fixed effects
   random = NULL,           # random effects
   data = dat,              # data
-  N = 20000L               # number of simulations
+  N = 30000L,              # number of simulations
+  nthreads = 2L
 )
 
 ## ----gfiSummary_linreg--------------------------------------------------------
@@ -52,7 +53,7 @@ curve(
 )
 
 ## ----scatterplot--------------------------------------------------------------
-indcs <- sample.int(20000L, replace = TRUE, prob = fidSims$WEIGHT)
+indcs <- sample.int(30000L, replace = TRUE, prob = fidSims$WEIGHT)
 pseudoSims <- fidSims$VERTEX[indcs,]
 library(GGally)
 ggpairs(
@@ -100,7 +101,9 @@ dat        <- data.frame(
               )
 
 ## ----gfilmm_AOV1R-------------------------------------------------------------
-fidSims <- gfilmm(~ cbind(ylwr, yupr), ~ 1, ~ group, data = dat, N = 20000L)
+fidSims <- gfilmm(
+  ~ cbind(ylwr, yupr), ~ 1, ~ group, data = dat, N = 30000L, nthreads = 2L
+)
 
 ## ----gfiSummary_AOV1R---------------------------------------------------------
 gfiSummary(fidSims)
@@ -120,14 +123,8 @@ confint(aovfit)
 gfiConfInt(~ sqrt(sigma_group^2 + sigma_error^2)/`(Intercept)`, fidSims)
 
 ## ----parallel-----------------------------------------------------------------
-library(doParallel)
-cl <- makePSOCKcluster(2L)
-registerDoParallel(cl)
-
-gfs <- foreach(i = c(3L, 4L), .combine = list, .export = "gfilmm") %dopar% 
-  gfilmm(~ cbind(ylwr, yupr), ~ 1, ~ group, data = dat, N = i * 10000L)
-
-stopCluster(cl)
-
+gfs <- lapply(c(40000L, 50000L), function(N){
+  gfilmm(~ cbind(ylwr, yupr), ~ 1, ~ group, data = dat, N = N, nthreads = 2L)  
+})
 lapply(gfs, gfiSummary)
 

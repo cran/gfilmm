@@ -31,6 +31,7 @@ inference <- function(gfi, v, alpha=0.05){
 }
 
 #' Summary of fiducial distributions
+#' @description Summary of the fiducial distributions.
 #'
 #' @param gfi a \code{gfilmm} object (output of \code{\link{gfilmm}} or 
 #'   \code{\link{gfilmmPredictive}})
@@ -43,7 +44,9 @@ inference <- function(gfi, v, alpha=0.05){
 #' @examples
 #' data(KM41)
 #' h <- 0.005
-#' gfi <- gfilmm(~ cbind(y-h, y+h), ~ 1, ~ Batch, data = KM41, N = 5000)
+#' gfi <- gfilmm(
+#'   ~ cbind(y-h, y+h), ~ 1, ~ Batch, data = KM41, N = 5000, nthreads = 2
+#' )
 #' gfiSummary(gfi)
 gfiSummary <- function(gfi, conf = 0.95){
   sims <- if(inherits(gfi, "gfilmm.pred")) gfi[["FPD"]] else gfi[["VERTEX"]]
@@ -72,7 +75,9 @@ gfiSummary <- function(gfi, conf = 0.95){
 #' @export
 #'
 #' @examples h <- 0.01
-#' gfi <- gfilmm(~ cbind(yield-h, yield+h), ~ 1, ~ block, data = npk, N=5000)
+#' gfi <- gfilmm(
+#'   ~ cbind(yield-h, yield+h), ~ 1, ~ block, data = npk, N = 5000, nthreads = 2
+#' )
 #' gfiConfInt(~ sqrt(sigma_block^2 + sigma_error^2)/`(Intercept)`, gfi)
 gfiConfInt <- function(parameter, gfi, conf = 0.95){#, side = "two-sided"){
   #side <- match.arg(side, c("two-sided", "left", "right"))
@@ -99,7 +104,9 @@ gfiConfInt <- function(parameter, gfi, conf = 0.95){#, side = "two-sided"){
 #' @export
 #'
 #' @examples h <- 0.01
-#' gfi <- gfilmm(~ cbind(yield-h, yield+h), ~ 1, ~ block, data = npk, N=5000)
+#' gfi <- gfilmm(
+#'   ~ cbind(yield-h, yield+h), ~ 1, ~ block, data = npk, N = 5000, nthreads = 2
+#' )
 #' F <- gfiCDF(~ sqrt(sigma_block^2 + sigma_error^2)/`(Intercept)`, gfi)
 #' plot(F, xlim = c(0, 0.3), main = "Coefficient of variation", 
 #'      ylab = expression("Pr("<="x)"))
@@ -108,4 +115,29 @@ gfiCDF <- function(parameter, gfi){
   data <- if(inherits(gfi, "gfilmm.pred")) gfi[["FPD"]] else gfi[["VERTEX"]]
   fsims <- f_eval_rhs(parameter, data = data)
   ewcdf(fsims, weights = gfi[["WEIGHT"]]) 
+}
+
+#' Quantiles of a fiducial distribution 
+#' @description Quantiles of the fiducial distribution of a parameter of 
+#'   interest.
+#'
+#' @param parameter a right-sided formula defining the parameter of interest, 
+#'   like \code{~ sigma_error/`(Intercept)`}
+#' @param gfi a \code{gfilmm} object (output of \code{\link{gfilmm}} or 
+#'   \code{\link{gfilmmPredictive}})
+#' @param probs numeric vector of probabilities
+#'
+#' @return Numeric vector of quantiles, of the same length as \code{probs}.
+#' 
+#' @importFrom spatstat quantile.ewcdf 
+#' @export
+#'
+#' @examples h <- 0.01
+#' gfi <- gfilmm(
+#'   ~ cbind(yield-h, yield+h), ~ 1, ~ block, data = npk, N = 5000, nthreads = 2
+#' )
+#' gfiQuantile(~ sqrt(sigma_block^2 + sigma_error^2), gfi, c(25, 50, 75)/100)
+gfiQuantile <- function(parameter, gfi, probs){
+  cdf <- gfiCDF(parameter, gfi)
+  quantile.ewcdf(cdf, probs = probs)
 }

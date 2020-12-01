@@ -13,6 +13,8 @@
 #'   algorithm
 #' @param seed the seed for the C++ random numbers generator, a positive 
 #'   integer, or \code{NULL} to use a random seed 
+#' @param nthreads number of threads to run the algorithm with parallelized 
+#'   blocks of code
 #' @param x a \code{gfilmm} object
 #' @param ... ignored
 #'
@@ -22,6 +24,7 @@
 #' @importFrom stats model.matrix terms.formula as.formula
 #' @importFrom utils head
 #' @importFrom rgr gx.sort.df
+#' @importFrom Matrix sparseMatrix
 #' @export
 #' 
 #' @references J. Cisewski and J.Hannig. 
@@ -29,7 +32,9 @@
 #'   The Annals of Statistics 2012, Vol. 40, No. 4, 2102–2127.
 #'
 #' @examples h <- 0.01
-#' gfi <- gfilmm(~ cbind(yield-h, yield+h), ~ 1, ~ block, data = npk, N=5000)
+#' gfi <- gfilmm(
+#'   ~ cbind(yield-h, yield+h), ~ 1, ~ block, data = npk, N = 5000, nthreads = 2
+#' )
 #' # fiducial cumulative distribution function of the intercept:
 #' Fintercept <- gfiCDF(~ `(Intercept)`, gfi)
 #' plot(Fintercept, xlim = c(40, 65))
@@ -40,10 +45,12 @@
 #' kfit <- kde1d(gfi$VERTEX[["(Intercept)"]], weights = gfi$WEIGHT)
 #' curve(dkde1d(x, kfit), from = 45, to = 65)
 gfilmm <- function(
-  y, fixed, random, data, N, thresh=N/2, long=FALSE, seed = NULL
+  y, fixed, random, data, 
+  N, thresh = N/2, long = FALSE, seed = NULL, 
+  nthreads = parallel::detectCores()
 ){
   seed <- if(is.null(seed)){
-    sample.int(.Machine$integer.max, 1L)
+    sample.int(1000000L, 1L)
   }else{
     as.integer(abs(seed))
   }
@@ -83,12 +90,14 @@ gfilmm <- function(
   RE2 <- getRE2(data, random, check = TRUE)
   tlabs <- head(names(RE2), -1L)
   Z <- getZ(RE2) 
+  ij <- which(Z == 1L, arr.ind = TRUE)
+  Z <- sparseMatrix(i = ij[,1L], j = ij[,2L], dims = dim(Z), x = 1.0)
   E <- vapply(RE2, nlevels, integer(1L))
   RE2 <- vapply(RE2, recode, integer(n))#vapply(RE2, as.integer, integer(n)) - 1L # recode
   gfi <- if(long){
-    gfilmm_long(yl, yu, FE, Z, RE2, E, N, thresh, seed)
+    gfilmm_long(yl, yu, FE, Z, RE2, E, N, thresh, seed, nthreads)
   }else{
-    gfilmm_double(yl, yu, FE, Z, RE2, E, N, thresh, seed)
+    gfilmm_double(yl, yu, FE, Z, RE2, E, N, thresh, seed, nthreads)
   }
   rownames(gfi[["VERTEX"]]) <-
     c(colnames(FE), paste0("sigma_", c(tlabs, "error")))
@@ -116,34 +125,3 @@ print.gfilmm <- function(x, ...){
   cat(capture.output(str(setNames(x, nms))), sep = "\n")
 }
 
-######################
-# dat <- data.frame(
-#   A = c("a", "b", "c"),
-#   B = c("x", "y", "z"),
-#   NotUsed = c(1, 2, 3)
-# )
-# 
-# frml <- ~ A + B + A:B
-# 
-# # [[1]]
-# # [1] a b c
-# # Levels: a b c
-# # 
-# # [[2]]
-# # [1] x y z
-# # Levels: x y z
-# # 
-# # [[3]]
-# # [1] a:x b:y c:z
-# # Levels: a:x b:y c:z
-# 
-# library(lazyeval) # to use 'as.lazy' and 'lazy_eval'
-# tf <- terms.formula(frml)
-# factors <- rownames(attr(tf, "factors"))
-# tvars <- attr(tf, "variables")
-# tlabs <- attr(tf, "term.labels")
-# used <- lapply(eval(tvars, envir = dat), as.factor)
-# names(used) <- factors
-# lapply(tlabs, function(tlab){
-#   droplevels(lazy_eval(as.lazy(tlab), data = used))
-# })

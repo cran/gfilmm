@@ -1,9 +1,12 @@
-// -*- mode: C++; c-indent-level: 2; c-basic-offset: 2; indent-tabs-mode: nil;
-// -*-
+// -*- mode: C++; c-indent-level: 2; c-basic-offset: 2; indent-tabs-mode: nil; -*-
 
 // we only include RcppEigen.h which pulls Rcpp.h in for us
 #include <RcppEigen.h>
 #include <random>
+
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 // via the depends attribute we tell Rcpp to create hooks for
 // RcppEigen so that the build process will know what to do
@@ -57,7 +60,7 @@ template <typename Real>
 Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> gmatrix(
     const size_t nrows,
     const size_t ncols,
-    std::default_random_engine & generator) {
+    std::default_random_engine& generator) {
   Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> G(nrows, ncols);
   for(size_t i = 0; i < nrows; i++) {
     for(size_t j = 0; j < ncols; j++) {
@@ -96,7 +99,7 @@ const std::vector<Real> fidSample(
     const Eigen::Matrix<Real, Eigen::Dynamic, 1>& VTsum,
     const Real L,
     const Real U,
-    std::default_random_engine & generator) {
+    std::default_random_engine& generator) {
   Real ZZ, wt;                    // outputs
   const size_t p = VTsum.size();  // = VT2.size()
   std::vector<size_t> high, low, zero, zeronot;
@@ -284,7 +287,7 @@ const std::vector<Real> fidSample(
   return out;
 }
 
-const Eigen::VectorXi cppunique(Eigen::VectorXi & v) {
+const Eigen::VectorXi cppunique(Eigen::VectorXi& v) {
   int size = v.size();
   for(int i = 0; i < size; i++) {
     for(int j = i + 1; j < size;) {
@@ -338,7 +341,7 @@ const Eigen::MatrixXi vv2matrix(std::vector<std::vector<int>> U,
   return out;
 }
 
-const Eigen::VectorXi Vsort(Eigen::VectorXi & V) {
+const Eigen::VectorXi Vsort(Eigen::VectorXi& V) {
   std::sort(V.data(), V.data() + V.size());
   return V;
 }
@@ -364,14 +367,14 @@ std::vector<T> zero2n(T n) {
 }
 
 const std::vector<size_t> sample_int(const size_t n,
-                                     std::default_random_engine & generator) {
+                                     std::default_random_engine& generator) {
   std::vector<size_t> elems = zero2n(n);
   std::shuffle(elems.begin(), elems.end(), generator);
   return elems;
 }
 
 template <typename Real>
-const Real rchisq(int df, std::default_random_engine & generator) {
+const Real rchisq(int df, std::default_random_engine& generator) {
   Real out = 0;
   for(int i = 0; i < df; i++) {
     const Real toadd = (Real)(gaussian(generator));
@@ -382,7 +385,7 @@ const Real rchisq(int df, std::default_random_engine & generator) {
 
 const Eigen::MatrixXd umatrix(const size_t nrows,
                               const size_t ncols,
-                              std::default_random_engine & generator) {
+                              std::default_random_engine& generator) {
   Eigen::MatrixXd U(nrows, ncols);
   for(size_t i = 0; i < nrows; i++) {
     for(size_t j = 0; j < ncols; j++) {
@@ -393,15 +396,20 @@ const Eigen::MatrixXd umatrix(const size_t nrows,
 }
 
 template <typename Real>
-Eigen::MatrixXd pickCoordinates(
+Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+pickCoordinates(
     const size_t Dim,
     const size_t N,
     const size_t fe,
-    const std::vector<Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>>& VT,
+    const std::vector<
+        Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>&
+        VT,
     const Eigen::MatrixXd& U) {
-  Eigen::MatrixXd VTend(Dim, N);
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> VTend(
+      Dim, N);
   for(size_t i = 0; i < N; i++) {
-    const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> VTi = VT[i];
+    const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+        VTi = VT[i];
     for(size_t j = 0; j < Dim; j++) {
       if(U.coeff(j, i) < 0.5) {
         if(j < fe) {
@@ -436,23 +444,32 @@ typedef struct GFI {
 } GFI;
 
 template <typename Real>
-GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
-            const Eigen::Matrix<Real, Eigen::Dynamic, 1>& U,
-            const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>& FE,
-            const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>& RE,
-            const Eigen::MatrixXi& RE2,
-            const Rcpp::IntegerVector E,
-            const size_t N,
-            const double thresh,
-            const unsigned seed) {
+GFI gfilmm_(
+    const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
+    const Eigen::Matrix<Real, Eigen::Dynamic, 1>& U,
+    const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
+        FE,
+    const Eigen::SparseMatrix<Real, Eigen::RowMajor>& RE,
+    const Eigen::MatrixXi& RE2,
+    const Rcpp::IntegerVector E,
+    const size_t N,
+    const double thresh,
+    const unsigned seed,
+    const unsigned nthreads) {
   std::default_random_engine generator(seed);
+  std::vector<std::default_random_engine> generators(nthreads);
+  for(size_t t = 0; t < nthreads; t++) {
+    std::default_random_engine gen(seed + (t + 1) * 2000000);
+    generators[t] = gen;
+  }
   Eigen::Matrix<Real, Eigen::Dynamic, 1> WTnorm(N);  // output:weights
   const size_t n = L.size();
   const size_t fe = FE.cols();  // si FE=NULL, passer une matrice n x 0
   const size_t re = RE2.cols();
   const size_t Dim = fe + re;
   const size_t Dimm1 = Dim - 1;
-  Eigen::MatrixXd VERTEX(Dim, N);  // output
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> VERTEX(
+      Dim, N);  // output
   const Rcpp::IntegerVector Esum = Rcpp::cumsum(E);
 
   //-------- SET-UP ALGORITHM OBJECTS ------------------------------------------
@@ -462,18 +479,28 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
   Rcpp::NumericVector ESS(n, (double)N);
   std::vector<int> C;  // initial constraints
   std::vector<int> K;  // complement of C
-  std::vector<Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>> VT(
-      N);  // vertices
+  std::vector<
+      Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+      VT(N);  // vertices
 
   //-------- SAMPLE ALL Z's / SET-UP WEIGHTS -----------------------------------
-  std::vector<Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>> A(N);
+  std::vector<
+      Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+      A(N);
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(nthreads)
+#endif
   for(size_t k = 0; k < N; k++) {
     A[k].resize(n, re);
   }
+
   for(size_t j = 0; j < re; j++) {
     Z[j] = gmatrix<Real>(E(j), N, generator);
     const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> M =
         RE.block(0, Esum(j) - E(j), n, E(j)) * Z[j];
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(nthreads)
+#endif
     for(size_t k = 0; k < N; k++) {
       for(size_t i = 0; i < n; i++) {
         A[k](i, j) = M.coeff(i, k);
@@ -481,7 +508,8 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
     }
   }
 
-  Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> AA(n, Dim);
+  Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> AA(n,
+                                                                          Dim);
   AA << FE, A[0];
   Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> AT(0, Dim);
   int r = 0;
@@ -501,12 +529,15 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
   const Eigen::VectorXi K_start =
       Eigen::Map<Eigen::VectorXi, Eigen::Unaligned>(C.data(), Dim);
   Eigen::VectorXi JJ =
-    Eigen::Map<Eigen::VectorXi, Eigen::Unaligned>(C.data(), Dim);
-  
-  
+      Eigen::Map<Eigen::VectorXi, Eigen::Unaligned>(C.data(), Dim);
+
   for(size_t i = 0; i < n - Dim; i++) {
+    const int K_i = K[i];
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(nthreads)
+#endif
     for(size_t j = 0; j < N; j++) {
-      Z[re - 1](K[i], j) = 0.0;
+      Z[re - 1](K_i, j) = 0.0;
     }
   }
 
@@ -517,14 +548,21 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
   std::vector<Eigen::MatrixXi> CC(N, tUSE);  // constraints
   Eigen::Matrix<Real, Eigen::Dynamic, 1> b(2 * n);
   b << U, -L;
-  Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> FEFE(2 * n, fe);
+  Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> FEFE(
+      2 * n, fe);
   FEFE << FE, -FE;
 
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(nthreads)
+#endif
   for(size_t k = 0; k < N; k++) {
-    Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> V(Dim, twoPowerDim);
-    Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> AkAk(2 * n, re);
+    Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> V(
+        Dim, twoPowerDim);
+    Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> AkAk(
+        2 * n, re);
     AkAk << A[k], -A[k];
-    Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> AA(2 * n, Dim);
+    Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> AA(
+        2 * n, Dim);
     AA << FEFE, AkAk;
     for(size_t i = 0; i < twoPowerDim; i++) {
       Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> AAuse(Dim, Dim);
@@ -539,6 +577,7 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
     }
     VT[k] = V;
   }
+
   std::vector<size_t> VC(N, twoPowerDim);  // number of vertices
 
   //-------- MAIN ALGORITHM ----------------------------------------------------
@@ -563,16 +602,27 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
           if(E(i) > Z[i].rows()) {
             const int nrowsZi = Z[i].rows();
             Z[i].conservativeResize(E(i), Eigen::NoChange);
-            Z[i].bottomRows(E(i) - nrowsZi) = 
-              gmatrix<Real>(E(i) - nrowsZi, N, generator);
+            Z[i].bottomRows(E(i) - nrowsZi) =
+                gmatrix<Real>(E(i) - nrowsZi, N, generator);
           }
         }
       }
 
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(nthreads)
+#endif
       for(size_t i = 0; i < N; i++) {
-        const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> VTi = VT[i];
-        const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> VT1 =
-            VTi.topRows(Dimm1);
+#ifdef _OPENMP
+        const unsigned thread = omp_get_thread_num();
+#else
+        const unsigned thread = 0;
+#endif
+        const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic,
+                            Eigen::RowMajor>
+            VTi = VT[i];
+        const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic,
+                            Eigen::RowMajor>
+            VT1 = VTi.topRows(Dimm1);
         const Eigen::Matrix<Real, Eigen::Dynamic, 1> VT2 = VTi.row(Dimm1);
         Eigen::Matrix<Real, Eigen::Dynamic, 1> Z1t(re - 1);
         for(size_t j = 0; j < re - 1; j++) {
@@ -581,10 +631,8 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
         Eigen::Matrix<Real, Eigen::Dynamic, 1> Z1(Dimm1);
         Z1 << FE.row(k).transpose(), Z1t;
         Eigen::Matrix<Real, Eigen::Dynamic, 1> VTsum = VT1.transpose() * Z1;
-
-        const std::vector<Real> sample =
-            fidSample<Real>(VT2, VTsum, L.coeff(k), U.coeff(k), generator);
-
+        std::vector<Real> sample = fidSample<Real>(
+            VT2, VTsum, L.coeff(k), U.coeff(k), generators[thread]);
         const Real ZZ = sample[0];
         const Real wt = sample[1];
         Z[re - 1](k, i) = ZZ;
@@ -615,7 +663,8 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
           }
         }
         Eigen::MatrixXi CCtemp(Dim, 0);
-        Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> VTtemp(Dim, 0);
+        Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+            VTtemp(Dim, 0);
         int vert = 0;
         const size_t lcheckl = checkl.size();
         const size_t lwhichl = whichl.size();
@@ -788,6 +837,9 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
       }
 
       Eigen::Matrix<Real, Eigen::Dynamic, 1> WT(N);
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(nthreads)
+#endif
       for(size_t j = 0; j < N; j++) {
         WT(j) = weight.col(j).prod();
       }
@@ -808,7 +860,7 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
       JJ.conservativeResize(JJ.size() + 1);
       const int lenJJ = JJ.size();
       JJ(lenJJ - 1) = k;
-      
+
       if(ESS(k) < thresh && k < K[n - Dim - 1]) {
         std::vector<size_t> N_sons(N, 0);
         const std::vector<Real> dist = Vcumsum<Real>(N * WTnorm);
@@ -821,35 +873,51 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
           }
           N_sons[j] += 1;
         }
-        Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> REJJ(lenJJ,
-                                                                 Esum(re - 1));
+        Eigen::SparseMatrix<Real, Eigen::RowMajor> REJJ(lenJJ, Esum(re - 1));
         for(int jj = 0; jj < lenJJ; jj++) {
           REJJ.row(jj) = RE.row(JJ.coeff(jj));
         }
-        Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> FEJJ(lenJJ, fe);
+        Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+            FEJJ(lenJJ, fe);
         if(fe > 0) {
           for(int jj = 0; jj < lenJJ; jj++) {
             FEJJ.row(jj) = FE.row(JJ.coeff(jj));
           }
         }
         std::vector<Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>> ZZ(re);
+        std::vector<size_t> Nsons_sum(N);
+        Nsons_sum[0] = 0;
+        for(size_t i = 1; i < N; i++) {
+          Nsons_sum[i] = Nsons_sum[i - 1] + N_sons[i - 1];
+        }
         for(size_t ii = 0; ii < re; ii++) {
-          ZZ[ii].resize(E(ii), 0);
+          ZZ[ii].resize(E(ii), Nsons_sum[N - 1] + N_sons[N - 1]);
         }
         std::vector<size_t> VCVC(N, 0);
         std::vector<Eigen::MatrixXi> CCCC(N);
-        std::vector<Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>> VTVT(
-            N);
+        std::vector<Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic,
+                                  Eigen::RowMajor>>
+            VTVT(N);
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(nthreads)
+#endif
         for(size_t i = 0; i < N; i++) {
+#ifdef _OPENMP
+          const unsigned thread = omp_get_thread_num();
+#else
+          const unsigned thread = 0;
+#endif
           const size_t Nsons_i = N_sons[i];
           if(Nsons_i) {
             std::vector<size_t> VCtemp(Nsons_i, VC[i]);
             std::vector<Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>>
                 Ztemp(re);
             const size_t copy = Nsons_i - 1;
-            const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> VTi =
-                VT[i];
-            std::vector<Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>>
+            const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic,
+                                Eigen::RowMajor>
+                VTi = VT[i];
+            std::vector<Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic,
+                                      Eigen::RowMajor>>
                 VTtemp(Nsons_i, VTi);
             for(size_t ii = 0; ii < re; ii++) {
               Ztemp[ii].resize(E(ii), Nsons_i);
@@ -858,7 +926,8 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
               }
             }
             if(copy) {
-              const std::vector<size_t> ord = sample_int(re, generator);
+              const std::vector<size_t> ord =
+                  sample_int(re, generators[thread]);
               for(size_t j = 0; j < re; j++) {
                 const size_t kk = ord[j];
                 for(size_t ii = 0; ii < copy; ii++) {
@@ -882,8 +951,8 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
                   for(int jj = 0; jj < vv.size(); jj++) {
                     Z1_(jj) = Ztemp[kk].coeff(vv(jj), ii);
                   }
-                  const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>
-                      CO2_ = REJJ.block(0, Esum(kk) - E(kk), lenJJ, E(kk));
+                  const Eigen::SparseMatrix<Real> CO2_ =
+                      REJJ.block(0, Esum(kk) - E(kk), lenJJ, E(kk));
                   std::vector<int> pcolsums;
                   for(int jj = 0; jj < E(kk); jj++) {
                     const Real colsum = CO2_.col(jj).sum();
@@ -946,12 +1015,12 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
                         Z1 - O2a;
                     const Real b = sqrt(tau_.dot(tau_));
                     const Eigen::Matrix<Real, Eigen::Dynamic, 1> tau = tau_ / b;
-                    const Real bb = 
-                      sqrt(rchisq<Real>(lenZ1 - rankO2, generator));
+                    const Real bb =
+                        sqrt(rchisq<Real>(lenZ1 - rankO2, generators[thread]));
                     const Real bbb = b / bb;
                     Eigen::Matrix<Real, Eigen::Dynamic, 1> aa(rankO2);
                     for(int jj = 0; jj < rankO2; jj++) {
-                      aa(jj) = (Real)(gaussian(generator));
+                      aa(jj) = (Real)(gaussian(generators[thread]));
                     }
                     const Eigen::Matrix<Real, Eigen::Dynamic, 1> O2aa = O2 * aa;
                     const Eigen::Matrix<Real, Eigen::Dynamic, 1> bbtau =
@@ -983,7 +1052,8 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
                   } else {
                     const Real b = sqrt(Z1.dot(Z1));
                     const Eigen::Matrix<Real, Eigen::Dynamic, 1> tau = Z1 / b;
-                    const Real bb = sqrt(rchisq<Real>(lenZ1, generator));
+                    const Real bb =
+                        sqrt(rchisq<Real>(lenZ1, generators[thread]));
                     for(size_t jj = 0; jj < lenZ1; jj++) {
                       Ztemp[kk](Z00[jj], ii) = bb * tau.coeff(jj);
                     }
@@ -993,9 +1063,7 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
               }
             }
             for(size_t ii = 0; ii < re; ii++) {
-              ZZ[ii].conservativeResize(Eigen::NoChange,
-                                        ZZ[ii].cols() + (int)Nsons_i);
-              ZZ[ii].rightCols(Nsons_i) = Ztemp[ii];
+              ZZ[ii].block(0, Nsons_sum[i], E(ii), Nsons_i) = Ztemp[ii];
             }
             size_t d = 0;
             for(size_t ii = 0; ii < i; ii++) {
@@ -1022,8 +1090,12 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
 
     //------------determine signs ----------------------------------------------
     Eigen::MatrixXi signs = Eigen::MatrixXi::Zero(re, N);
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(nthreads)
+#endif
     for(size_t i = 0; i < N; i++) {
-      const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> VTi = VT[i];
+      const Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+          VTi = VT[i];
       for(size_t j = 0; j < re; j++) {
         const Eigen::Matrix<Real, Eigen::Dynamic, 1> row = VTi.row(fe + j);
         bool allneg = true;
@@ -1043,7 +1115,9 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
         re);  // resized below
     std::vector<Eigen::VectorXi> nn(re);
     std::vector<int> lengths_nn(re);
-    std::vector<Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>> VTVT(N);
+    std::vector<
+        Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+        VTVT(N);
     Eigen::VectorXi n1_(K1.size() + (int)Dim);
     n1_ << K1, K_start;
     const Eigen::VectorXi n1 = Vsort(n1_);
@@ -1054,11 +1128,20 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
       }
       nn[ii] = cppunique(vec);
       lengths_nn[ii] = nn[ii].size();
-      ZZ[ii].resize(lengths_nn[ii], 0);
+      ZZ[ii].resize(lengths_nn[ii], N);
     }
 
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(nthreads)
+#endif
     for(size_t i = 0; i < N; i++) {
-      Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> VTtemp = VT[i];
+#ifdef _OPENMP
+      const unsigned thread = thread;
+#else
+      const unsigned thread = 0;
+#endif
+      Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+          VTtemp = VT[i];
       std::vector<Eigen::Matrix<Real, Eigen::Dynamic, 1>> Ztemp(re);
       for(size_t ii = 0; ii < re; ii++) {
         Ztemp[ii].resize(lengths_nn[ii]);
@@ -1066,7 +1149,7 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
           Ztemp[ii](iii) = Z[ii].coeff(nn[ii].coeff(iii), i);
         }
       }
-      const std::vector<size_t> ord = sample_int(re, generator);
+      const std::vector<size_t> ord = sample_int(re, generators[thread]);
       for(size_t j = 0; j < re; j++) {
         const size_t kk = ord[j];
         Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> XX(n, 0);
@@ -1115,11 +1198,12 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
           const Eigen::Matrix<Real, Eigen::Dynamic, 1> tau_ = Z1 - O2a;
           const Real b = sqrt(tau_.dot(tau_));
           const Eigen::Matrix<Real, Eigen::Dynamic, 1> tau = tau_ / b;
-          const Real bb = sqrt(rchisq<Real>(lenZ1 - rankO2, generator));
+          const Real bb =
+              sqrt(rchisq<Real>(lenZ1 - rankO2, generators[thread]));
           const Real bbb = b / bb;
           Eigen::Matrix<Real, Eigen::Dynamic, 1> aa(rankO2);
           for(int jj = 0; jj < rankO2; jj++) {
-            aa(jj) = (Real)(gaussian(generator));
+            aa(jj) = (Real)(gaussian(generators[thread]));
           }
           const Eigen::Matrix<Real, Eigen::Dynamic, 1> O2aa = O2 * aa;
           const Eigen::Matrix<Real, Eigen::Dynamic, 1> bbtau = bb * tau;
@@ -1139,14 +1223,13 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
         } else {
           const Real b = sqrt(Z1.dot(Z1));
           const Eigen::Matrix<Real, Eigen::Dynamic, 1> tau = Z1 / b;
-          const Real bb = sqrt(rchisq<Real>(lenZ1, generator));
+          const Real bb = sqrt(rchisq<Real>(lenZ1, generators[thread]));
           Ztemp[kk] = bb * tau;
           VTtemp.row(fe + kk) *= b / bb;
         }
       }
       for(size_t ii = 0; ii < re; ii++) {
-        ZZ[ii].conservativeResize(Eigen::NoChange, ZZ[ii].cols() + 1);
-        ZZ[ii].rightCols(1) = Ztemp[ii];
+        ZZ[ii].col(i) = Ztemp[ii];
       }
       VTVT[i] = VTtemp;
     }
@@ -1155,6 +1238,9 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
     VT = VTVT;
 
     //---------flip negatives --------------------------------------------------
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(nthreads)
+#endif
     for(size_t i = 0; i < N; i++) {
       for(size_t j = 0; j < re; j++) {
         if(signs(j, i) == -1) {
@@ -1171,49 +1257,27 @@ GFI gfilmm_(const Eigen::Matrix<Real, Eigen::Dynamic, 1>& L,
   }
 
   GFI out;
-  Eigen::VectorXd ow = Eigen::VectorXd::Zero(N);
-  out.weights = ow;
+  out.weights = WTnorm.template cast<double>();
   out.vertices = VERTEX;
   out.ess = ESS;
 
-  for(auto j = 0; j < N; j++) {
-    out.weights(j) = (double)WTnorm.coeff(j);
-  }
-
-  return out;
-}
-
-Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> d2l(
-    Eigen::MatrixXd M) {
-  Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> out(M.rows(),
-                                                                 M.cols());
-  for(auto i = 0; i < M.rows(); i++) {
-    for(auto j = 0; j < M.cols(); j++) {
-      out(i, j) = (long double)M.coeff(i, j);
-    }
-  }
-  return out;
-}
-
-Eigen::Matrix<long double, Eigen::Dynamic, 1> d2lVector(Eigen::VectorXd V) {
-  Eigen::Matrix<long double, Eigen::Dynamic, 1> out(V.rows());
-  for(auto i = 0; i < V.size(); i++) {
-    out(i) = (long double)V.coeff(i);
-  }
   return out;
 }
 
 // [[Rcpp::export]]
-Rcpp::List gfilmm_double(const Eigen::VectorXd& L,
-                         const Eigen::VectorXd& U,
-                         const Eigen::MatrixXd& FE,
-                         const Eigen::MatrixXd& RE,
-                         const Eigen::MatrixXi& RE2,
-                         const Rcpp::IntegerVector E,
-                         const size_t N,
-                         const double thresh, 
-                         const unsigned seed) {
-  const GFI gfi = gfilmm_<double>(L, U, FE, RE, RE2, E, N, thresh, seed);
+Rcpp::List gfilmm_double(
+    const Eigen::VectorXd& L,
+    const Eigen::VectorXd& U,
+    const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& FE,
+    const Eigen::SparseMatrix<double>& RE,
+    const Eigen::MatrixXi& RE2,
+    const Rcpp::IntegerVector E,
+    const size_t N,
+    const double thresh,
+    const unsigned seed,
+    const unsigned nthreads) {
+  const GFI gfi =
+      gfilmm_<double>(L, U, FE, RE, RE2, E, N, thresh, seed, nthreads);
 
   Rcpp::List out = Rcpp::List::create(Rcpp::Named("VERTEX") = gfi.vertices,
                                       Rcpp::Named("WEIGHT") = gfi.weights);
@@ -1222,17 +1286,20 @@ Rcpp::List gfilmm_double(const Eigen::VectorXd& L,
 }
 
 // [[Rcpp::export]]
-Rcpp::List gfilmm_long(const Eigen::VectorXd& L,
-                       const Eigen::VectorXd& U,
-                       const Eigen::MatrixXd& FE,
-                       const Eigen::MatrixXd& RE,
-                       const Eigen::MatrixXi& RE2,
-                       const Rcpp::IntegerVector E,
-                       const size_t N,
-                       const double thresh, 
-                       const unsigned seed) {
-  const GFI gfi = gfilmm_<long double>(d2lVector(L), d2lVector(U), d2l(FE),
-                                       d2l(RE), RE2, E, N, thresh, seed);
+Rcpp::List gfilmm_long(
+    const Eigen::VectorXd& L,
+    const Eigen::VectorXd& U,
+    const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& FE,
+    const Eigen::SparseMatrix<double>& RE,
+    const Eigen::MatrixXi& RE2,
+    const Rcpp::IntegerVector E,
+    const size_t N,
+    const double thresh,
+    const unsigned seed,
+    const unsigned nthreads) {
+  const GFI gfi = gfilmm_<long double>(
+      L.cast<long double>(), U.cast<long double>(), FE.cast<long double>(),
+      RE.cast<long double>(), RE2, E, N, thresh, seed, nthreads);
 
   Rcpp::List out = Rcpp::List::create(Rcpp::Named("VERTEX") = gfi.vertices,
                                       Rcpp::Named("WEIGHT") = gfi.weights);

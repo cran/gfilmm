@@ -5,7 +5,17 @@
 \alias{print.gfilmm}
 \title{Generalized fiducial inference}
 \usage{
-gfilmm(y, fixed, random, data, N, thresh = N/2, long = FALSE, seed = NULL)
+gfilmm(
+  y,
+  fixed,
+  random,
+  data,
+  N,
+  thresh = N/2,
+  long = FALSE,
+  seed = NULL,
+  nthreads = parallel::detectCores()
+)
 
 \method{print}{gfilmm}(x, ...)
 }
@@ -30,6 +40,9 @@ algorithm}
 \item{seed}{the seed for the C++ random numbers generator, a positive 
 integer, or \code{NULL} to use a random seed}
 
+\item{nthreads}{number of threads to run the algorithm with parallelized 
+blocks of code}
+
 \item{x}{a \code{gfilmm} object}
 
 \item{...}{ignored}
@@ -43,7 +56,9 @@ Samples the fiducial distributions.
 }
 \examples{
 h <- 0.01
-gfi <- gfilmm(~ cbind(yield-h, yield+h), ~ 1, ~ block, data = npk, N=5000)
+gfi <- gfilmm(
+  ~ cbind(yield-h, yield+h), ~ 1, ~ block, data = npk, N = 5000, nthreads = 2
+)
 # fiducial cumulative distribution function of the intercept:
 Fintercept <- gfiCDF(~ `(Intercept)`, gfi)
 plot(Fintercept, xlim = c(40, 65))
