@@ -1,7 +1,7 @@
 Package: gfilmm
 Type: Package
 Title: Generalized Fiducial Inference for Normal Linear Mixed Models
-Version: 2.0.2
+Version: 2.0.3
 Authors@R: c(
     person("Stéphane", "Laurent", role = c("aut", "cre"),
            email = "laurent_step@outlook.fr"),
@@ -15,8 +15,8 @@ Description: Simulation of the generalized fiducial distribution for normal line
 License: GPL-3
 SystemRequirements: C++11
 Depends: R (>= 3.1.0)
-Imports: Rcpp (>= 1.0.0), lazyeval, stats, spatstat, utils, forcats,
-        rgr, Matrix, parallel
+Imports: Rcpp (>= 1.0.0), lazyeval, stats, spatstat (>= 2.0.0),
+        spatstat.geom, utils, forcats, rgr, Matrix, parallel
 Suggests: kde1d, knitr, rmarkdown, lmerTest, emmeans, testthat, AOV1R,
         GGally, car
 LinkingTo: Rcpp, RcppEigen
@@ -27,10 +27,10 @@ VignetteBuilder: knitr
 URL: https://github.com/stla/gfilmm
 BugReports: https://github.com/stla/gfilmm/issues
 NeedsCompilation: yes
-Packaged: 2020-12-04 20:57:57 UTC; stla
+Packaged: 2021-03-16 12:46:56 UTC; stla
 Author: Stéphane Laurent [aut, cre],
   Jessi Cisewski [aut, ctb] (author of the original Matlab code,
     <https://orcid.org/0000-0002-9656-2272>)
 Maintainer: Stéphane Laurent <laurent_step@outlook.fr>
 Repository: CRAN
-Date/Publication: 2020-12-07 22:30:09 UTC
+Date/Publication: 2021-03-16 23:40:02 UTC

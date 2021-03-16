@@ -1,11 +1,11 @@
-d3d6c3a1dce5b0fa48d0d459e3bdf694 *DESCRIPTION
-c31f2aacbc1f51e1892db7c9e019c8af *NAMESPACE
-a5c46bcdaeb204e7d8833ebdbacb73b5 *NEWS.md
+52790813265be9f3da51f52a80c220d4 *DESCRIPTION
+d194a144cda69d657195ce64b008cdf8 *NAMESPACE
+3d79da9d2283c7afdc1a1330263c2da1 *NEWS.md
 b229f7f199976569ff4128abc7bce1d0 *R/RcppExports.R
 7d16cc42680fd95073f8b7176225cd78 *R/datasets.R
 2cf88d130886d3a7f7161df9cbcb23c4 *R/gfilmm.R
 fb41ce8aa7a320f71b93075cac9904cf *R/imports.R
-83bfa4a09bb418894df6a9382186e24b *R/inference.R
+ab8ec2e2653fac385adf19b5ef082721 *R/inference.R
 da1116cdafd96f77a0d85bb41b2a09f8 *R/internal.R
 d999599f56e3821c0a753a40a58bbcd7 *R/predictive.R
 36f556252a7fb8a15b8289354f78000d *README.md
@@ -14,7 +14,7 @@ d999599f56e3821c0a753a40a58bbcd7 *R/predictive.R
 37289bcec32406cdc54e0b2437e411a0 *data/pHdata.rda
 c104dc4d934d0186d5d86bf074318879 *inst/doc/the-gfilmm-package.R
 6ead1810ea3e2277cc81d7ae4946a36f *inst/doc/the-gfilmm-package.Rmd
-c2b34fb0dfc571824c1e5b00044fd6ba *inst/doc/the-gfilmm-package.html
+b08dc5b4050bd881cb4cbe97f16a2f63 *inst/doc/the-gfilmm-package.html
 ff6e09eb9f88ff14719297ad3e7c9713 *man/KM41.Rd
 250ae8fd74ff3304998752a8356d95dd *man/gfiCDF.Rd
 96b552d8be8c1605402e47b3ca30185f *man/gfiConfInt.Rd
